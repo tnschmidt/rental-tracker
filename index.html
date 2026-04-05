@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Rental Tracker</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        h1 {
+            font-size: 1.4rem;
+            margin-bottom: 20px;
+            color: #e0e0e0;
+        }
+        .selector {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+            width: 100%;
+            max-width: 400px;
+        }
+        .selector-label {
+            width: 100%;
+            max-width: 400px;
+            color: #666;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+        .sel-btn {
+            flex: 1;
+            padding: 12px 8px;
+            border: 2px solid #444;
+            border-radius: 12px;
+            background: #2a2a3e;
+            color: #ccc;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+        .sel-btn.active {
+            border-color: #4fc3f7;
+            background: #1a3a5c;
+            color: #4fc3f7;
+            font-weight: bold;
+        }
+        .sel-btn.active-green {
+            border-color: #2ecc71;
+            background: #1a3c2a;
+            color: #2ecc71;
+            font-weight: bold;
+        }
+        .mic-btn {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 3px solid #4fc3f7;
+            background: #1a3a5c;
+            color: #4fc3f7;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 20px 0;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .mic-btn:active, .mic-btn.listening {
+            background: #4fc3f7;
+            color: #1a1a2e;
+            transform: scale(1.05);
+        }
+        .mic-btn.listening {
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(79, 195, 247, 0.5); }
+            50% { box-shadow: 0 0 0 20px rgba(79, 195, 247, 0); }
+        }
+        .mic-icon {
+            font-size: 2.5rem;
+            display: block;
+        }
+        .status {
+            font-size: 0.95rem;
+            color: #888;
+            margin-bottom: 16px;
+            min-height: 24px;
+            text-align: center;
+        }
+        .preview {
+            background: #2a2a3e;
+            border-radius: 12px;
+            padding: 16px;
+            width: 100%;
+            max-width: 400px;
+            margin-bottom: 16px;
+            display: none;
+        }
+        .preview.show { display: block; }
+        .preview-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid #333;
+        }
+        .preview-row:last-child { border-bottom: none; }
+        .preview-label { color: #888; }
+        .preview-value { color: #fff; font-weight: 500; }
+        .raw-text {
+            color: #666;
+            font-size: 0.85rem;
+            margin-top: 8px;
+            font-style: italic;
+            text-align: center;
+        }
+        .action-btns {
+            display: flex;
+            gap: 12px;
+            width: 100%;
+            max-width: 400px;
+            margin-bottom: 24px;
+        }
+        .action-btns button {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .btn-save {
+            background: #2ecc71;
+            color: #fff;
+        }
+        .btn-cancel {
+            background: #444;
+            color: #ccc;
+        }
+        .btn-save:disabled {
+            background: #555;
+            color: #888;
+            cursor: not-allowed;
+        }
+        .manual-input {
+            width: 100%;
+            max-width: 400px;
+            margin-bottom: 20px;
+        }
+        .manual-input input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #444;
+            border-radius: 12px;
+            background: #2a2a3e;
+            color: #eee;
+            font-size: 1rem;
+        }
+        .manual-input input:focus {
+            outline: none;
+            border-color: #4fc3f7;
+        }
+        .history {
+            width: 100%;
+            max-width: 400px;
+        }
+        .history h3 {
+            color: #888;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .history-item {
+            background: #2a2a3e;
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .history-item.expense {
+            border-left: 3px solid #2ecc71;
+        }
+        .history-item.hours {
+            border-left: 3px solid #4fc3f7;
+        }
+        .history-activity { color: #ccc; }
+        .history-amount { font-weight: bold; }
+        .history-amount.hours-val { color: #4fc3f7; }
+        .history-amount.expense-val { color: #2ecc71; }
+        .history-meta { color: #666; font-size: 0.8rem; }
+        .setup-banner {
+            background: #3a2a1a;
+            border: 1px solid #f0a030;
+            border-radius: 12px;
+            padding: 16px;
+            width: 100%;
+            max-width: 400px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+            color: #f0c060;
+            text-align: center;
+            line-height: 1.5;
+        }
+        .setup-banner a { color: #4fc3f7; }
+        .sheet-link {
+            display: block;
+            width: 100%;
+            max-width: 400px;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+        .sheet-link a {
+            color: #4fc3f7;
+            text-decoration: none;
+            font-size: 0.95rem;
+        }
+        .sheet-link a:hover { text-decoration: underline; }
+        .settings-btn {
+            background: none;
+            border: 1px solid #444;
+            border-radius: 8px;
+            color: #666;
+            font-size: 0.8rem;
+            padding: 6px 14px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+        .settings-btn:active { border-color: #4fc3f7; color: #4fc3f7; }
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: #2ecc71;
+            color: #fff;
+            padding: 14px 24px;
+            border-radius: 12px;
+            font-weight: bold;
+            transition: transform 0.3s ease;
+            z-index: 100;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+        .toast.error { background: #e74c3c; }
+    </style>
+</head>
+<body>
+
+<h1>Rental Tracker</h1>
+
+<div class="setup-banner" id="setupBanner" style="display:none;">
+    Google Sheets not connected yet.<br>
+    Tap <b>Setup</b> below to paste your script URL.
+    <br><br>
+    <button onclick="promptScriptUrl()" style="padding:8px 20px;border:none;border-radius:8px;background:#4fc3f7;color:#1a1a2e;font-weight:bold;cursor:pointer;">Setup</button>
+</div>
+
+<div class="sheet-link" id="sheetLink">
+    <a id="sheetAnchor" href="#" target="_blank" onclick="return handleSheetClick()">Open Google Sheet &#x2197;</a>
+</div>
+
+<button class="settings-btn" onclick="openSettings()">Settings</button>
+
+<div class="selector-label">Person</div>
+<div class="selector" id="userSelect">
+    <button class="sel-btn active" onclick="selectUser('Thomas', this)">Thomas</button>
+    <button class="sel-btn" onclick="selectUser('Megan', this)">Megan</button>
+</div>
+
+<div class="selector-label">Property</div>
+<div class="selector" id="llcSelect">
+    <button class="sel-btn active-green" onclick="selectLLC('The Schmidt Home', this)">Schmidt Home</button>
+    <button class="sel-btn" onclick="selectLLC('JP Bishop Home', this)">JP Bishop Home</button>
+</div>
+
+<button class="mic-btn" id="micBtn" onclick="toggleListening()">
+    <span class="mic-icon">&#x1F3A4;</span>
+</button>
+<div class="status" id="status">Tap the mic and speak<br>"3 hours cleaning", "45 minutes laundry",<br>or "spent $35 at Walmart for supplies"</div>
+
+<div class="manual-input">
+    <input type="text" id="manualInput" placeholder='"2.5 hours cleaning", "45 min laundry", "$35 supplies"'
+           onkeydown="if(event.key==='Enter')parseManual()">
+</div>
+
+<div class="preview" id="preview">
+    <div class="preview-row">
+        <span class="preview-label">Type</span>
+        <span class="preview-value" id="prevType">-</span>
+    </div>
+    <div class="preview-row">
+        <span class="preview-label">Person</span>
+        <span class="preview-value" id="prevPerson">-</span>
+    </div>
+    <div class="preview-row">
+        <span class="preview-label">Property</span>
+        <span class="preview-value" id="prevLLC">-</span>
+    </div>
+    <div class="preview-row" id="prevAmountRow">
+        <span class="preview-label" id="prevAmountLabel">-</span>
+        <span class="preview-value" id="prevAmount">-</span>
+    </div>
+    <div class="preview-row">
+        <span class="preview-label">Description</span>
+        <span class="preview-value" id="prevActivity">-</span>
+    </div>
+    <div class="preview-row">
+        <span class="preview-label">Date</span>
+        <span class="preview-value" id="prevDate">-</span>
+    </div>
+    <div class="raw-text" id="rawText"></div>
+</div>
+
+<div class="action-btns" id="actionBtns" style="display:none;">
+    <button class="btn-cancel" onclick="cancelEntry()">Cancel</button>
+    <button class="btn-save" id="saveBtn" onclick="saveEntry()">Save</button>
+</div>
+
+<div class="history" id="historySection">
+    <h3>Recent Entries</h3>
+    <div id="historyList"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+    // ---- CONFIG ----
+    const SCRIPT_URL_KEY = 'rental_tracker_script_url';
+    const SHEET_URL_KEY = 'rental_tracker_sheet_url';
+    let scriptUrl = localStorage.getItem(SCRIPT_URL_KEY) || '';
+    let sheetUrl = localStorage.getItem(SHEET_URL_KEY) || '';
+
+    // ---- STATE ----
+    let currentUser = 'Thomas';
+    let currentLLC = 'The Schmidt Home';
+    let pendingEntry = null;
+    let recognition = null;
+    let isListening = false;
+
+    // ---- INIT ----
+    window.addEventListener('DOMContentLoaded', () => {
+        if (!scriptUrl) {
+            document.getElementById('setupBanner').style.display = 'block';
+        }
+        updateSheetLink();
+        loadHistory();
+    });
+
+    function updateSheetLink() {
+        const anchor = document.getElementById('sheetAnchor');
+        if (sheetUrl) {
+            anchor.href = sheetUrl;
+        } else {
+            anchor.href = '#';
+        }
+    }
+
+    function handleSheetClick() {
+        if (!sheetUrl) {
+            const url = prompt('Paste your Google Sheet URL:');
+            if (url && url.startsWith('https://')) {
+                sheetUrl = url.trim();
+                localStorage.setItem(SHEET_URL_KEY, sheetUrl);
+                updateSheetLink();
+                window.open(sheetUrl, '_blank');
+            }
+            return false;
+        }
+        return true;
+    }
+
+    function openSettings() {
+        const newScriptUrl = prompt('Google Apps Script Web App URL:', scriptUrl);
+        if (newScriptUrl !== null) {
+            scriptUrl = newScriptUrl.trim();
+            localStorage.setItem(SCRIPT_URL_KEY, scriptUrl);
+            if (scriptUrl) {
+                document.getElementById('setupBanner').style.display = 'none';
+            }
+        }
+
+        const newSheetUrl = prompt('Google Sheet URL (for quick link):', sheetUrl);
+        if (newSheetUrl !== null) {
+            sheetUrl = newSheetUrl.trim();
+            localStorage.setItem(SHEET_URL_KEY, sheetUrl);
+            updateSheetLink();
+        }
+
+        showToast('Settings saved');
+    }
+
+    function promptScriptUrl() {
+        const url = prompt('Paste your Google Apps Script Web App URL:');
+        if (url && url.startsWith('https://')) {
+            scriptUrl = url;
+            localStorage.setItem(SCRIPT_URL_KEY, url);
+            document.getElementById('setupBanner').style.display = 'none';
+            showToast('Connected!');
+        }
+    }
+
+    // ---- USER / LLC SELECT ----
+    function selectUser(name, btn) {
+        currentUser = name;
+        document.querySelectorAll('#userSelect .sel-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    }
+
+    function selectLLC(name, btn) {
+        currentLLC = name;
+        document.querySelectorAll('#llcSelect .sel-btn').forEach(b => b.classList.remove('active-green'));
+        btn.classList.add('active-green');
+    }
+
+    // ---- SPEECH RECOGNITION ----
+    function toggleListening() {
+        if (isListening) {
+            stopListening();
+            return;
+        }
+        if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+            setStatus('Speech recognition not supported. Use the text input below.');
+            return;
+        }
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+        recognition.lang = 'en-US';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+
+        recognition.onstart = () => {
+            isListening = true;
+            document.getElementById('micBtn').classList.add('listening');
+            setStatus('Listening...');
+        };
+        recognition.onresult = (event) => {
+            const text = event.results[0][0].transcript;
+            processInput(text);
+        };
+        recognition.onerror = (event) => {
+            stopListening();
+            if (event.error === 'no-speech') {
+                setStatus("Didn't catch that. Try again.");
+            } else {
+                setStatus('Error: ' + event.error);
+            }
+        };
+        recognition.onend = () => { stopListening(); };
+        recognition.start();
+    }
+
+    function stopListening() {
+        isListening = false;
+        document.getElementById('micBtn').classList.remove('listening');
+        if (recognition) recognition.stop();
+    }
+
+    // ---- PARSING ----
+    function processInput(text) {
+        // Try expense first, then hours
+        const expense = parseExpense(text);
+        if (expense) {
+            pendingEntry = {
+                type: 'expense',
+                person: currentUser,
+                llc: currentLLC,
+                amount: expense.amount,
+                description: expense.description,
+                date: new Date().toLocaleDateString('en-US'),
+                rawText: text
+            };
+            showPreview();
+            return;
+        }
+
+        const hours = parseHours(text);
+        if (hours) {
+            pendingEntry = {
+                type: 'hours',
+                person: currentUser,
+                llc: currentLLC,
+                hours: hours.hours,
+                description: hours.activity,
+                date: new Date().toLocaleDateString('en-US'),
+                rawText: text
+            };
+            showPreview();
+            return;
+        }
+
+        setStatus('Could not parse. Try:<br>"3 hours cleaning", "45 minutes laundry",<br>or "spent $35 at Walmart for supplies"');
+    }
+
+    function parseExpense(text) {
+        const lower = text.toLowerCase().trim();
+
+        // Match dollar amounts: "$35", "$35.50", "35 dollars", "$35 dollars"
+        let amount = null;
+
+        // "$35" or "$35.50"
+        const dollarSign = lower.match(/\$\s?(\d+\.?\d*)/);
+        if (dollarSign) {
+            amount = parseFloat(dollarSign[1]);
+        }
+
+        // "35 dollars" or "35.50 dollars"
+        if (amount === null) {
+            const dollarWord = lower.match(/(\d+\.?\d*)\s*dollars?/);
+            if (dollarWord) {
+                amount = parseFloat(dollarWord[1]);
+            }
+        }
+
+        // Voice often says "spent 35" without dollar sign
+        if (amount === null) {
+            const spentNum = lower.match(/spent\s+(\d+\.?\d*)/);
+            if (spentNum && !lower.includes('hour')) {
+                amount = parseFloat(spentNum[1]);
+            }
+        }
+
+        if (amount === null) return null;
+
+        // Extract description: remove the money portion and filler words
+        let description = lower
+            .replace(/i\s+(spent|paid|bought|purchased)\s*/g, '')
+            .replace(/\$\s?\d+\.?\d*/g, '')
+            .replace(/\d+\.?\d*\s*dollars?/g, '')
+            .replace(/spent\s+\d+\.?\d*/g, '')
+            .replace(/\b(on|for|at|the|a|an|some|of|to|from|in|with)\b/g, '')
+            .replace(/^\s+|\s+$/g, '')
+            .replace(/\s{2,}/g, ' ')
+            .trim();
+
+        if (description) {
+            description = description.charAt(0).toUpperCase() + description.slice(1);
+        } else {
+            description = 'General expense';
+        }
+
+        return { amount, description };
+    }
+
+    function parseHours(text) {
+        const lower = text.toLowerCase().trim();
+
+        const wordNums = {
+            'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5,
+            'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10,
+            'eleven': 11, 'twelve': 12, 'fifteen': 15, 'twenty': 20,
+            'thirty': 30, 'forty': 40, 'forty five': 45, 'forty-five': 45,
+            'fifty': 50
+        };
+        const wordNumKeys = Object.keys(wordNums).sort((a, b) => b.length - a.length);
+
+        function wordToNum(str) {
+            for (const w of wordNumKeys) {
+                if (str.includes(w)) return wordNums[w];
+            }
+            return null;
+        }
+
+        let totalHours = null;
+        let minutes = 0;
+        let hoursPart = 0;
+
+        // --- HOURS ---
+        // "half hour" / "half an hour"
+        if (/\bhalf\s*(an?\s*)?hour\b/.test(lower)) {
+            hoursPart = 0.5;
+        }
+        // "hour and a half" / "an hour and a half"
+        if (/\b(an?\s+)?hour\s+and\s+a\s+half\b/.test(lower)) {
+            hoursPart = 1.5;
+        }
+        // "quarter hour"
+        if (/\bquarter\s*(of\s+an?\s*)?hour\b/.test(lower)) {
+            hoursPart = 0.25;
+        }
+        // Numeric: "3 hours", "2.5 hours"
+        const numHourMatch = lower.match(/(\d+\.?\d*)\s*hours?/);
+        if (numHourMatch) {
+            hoursPart = parseFloat(numHourMatch[1]);
+        }
+        // Word hours: "two hours"
+        const wordHourMatch = lower.match(new RegExp('(' + wordNumKeys.join('|') + ')\\s*hours?'));
+        if (wordHourMatch) {
+            hoursPart = wordNums[wordHourMatch[1]];
+        }
+        // "X and a half hours"
+        const wordHalfMatch = lower.match(new RegExp('(' + wordNumKeys.join('|') + ')\\s+and\\s+a\\s+half\\s*hours?'));
+        if (wordHalfMatch) {
+            hoursPart = wordNums[wordHalfMatch[1]] + 0.5;
+        }
+
+        // --- MINUTES ---
+        // Numeric: "30 minutes", "45 min"
+        const numMinMatch = lower.match(/(\d+\.?\d*)\s*min(ute)?s?/);
+        if (numMinMatch) {
+            minutes = parseFloat(numMinMatch[1]);
+        }
+        // Word minutes: "thirty minutes", "forty five minutes"
+        if (!numMinMatch) {
+            const wordMinMatch = lower.match(new RegExp('(' + wordNumKeys.join('|') + ')\\s*min(ute)?s?'));
+            if (wordMinMatch) {
+                minutes = wordNums[wordMinMatch[1]];
+            }
+        }
+
+        // Calculate total
+        if (hoursPart > 0 || minutes > 0) {
+            totalHours = hoursPart + (minutes / 60);
+            // Round to 2 decimal places
+            totalHours = Math.round(totalHours * 100) / 100;
+        }
+
+        if (totalHours === null || totalHours === 0) return null;
+
+        // Extract activity: remove the time portion and common filler words
+        let activity = lower
+            .replace(/i\s+(spent|did|was|worked)\s*/g, '')
+            .replace(/(\d+\.?\d*)\s*hours?\s*(and\s*)?/g, '')
+            .replace(/(\d+\.?\d*)\s*min(ute)?s?\s*/g, '')
+            .replace(new RegExp('(' + wordNumKeys.join('|') + ')\\s*(and\\s+a\\s+half\\s*)?hours?\\s*(and\\s*)?', 'g'), '')
+            .replace(new RegExp('(' + wordNumKeys.join('|') + ')\\s*min(ute)?s?\\s*', 'g'), '')
+            .replace(/\b(a\s+)?half\s*(an?\s*)?hours?\s*/g, '')
+            .replace(/\b(a\s+)?quarter\s*(of\s+an?\s*)?hours?\s*/g, '')
+            .replace(/\b(an?\s+)?hour\s+and\s+a\s+half\s*/g, '')
+            .replace(/\b(on|doing|for|of|the|with|at|in|and)\b/g, '')
+            .replace(/^\s+|\s+$/g, '')
+            .replace(/\s{2,}/g, ' ')
+            .trim();
+
+        if (activity) {
+            activity = activity.charAt(0).toUpperCase() + activity.slice(1);
+        } else {
+            activity = 'General';
+        }
+
+        return { hours: totalHours, activity };
+    }
+
+    function parseManual() {
+        const input = document.getElementById('manualInput');
+        const text = input.value.trim();
+        if (!text) return;
+        processInput(text);
+        input.value = '';
+    }
+
+    // ---- PREVIEW ----
+    function showPreview() {
+        if (!pendingEntry) return;
+        document.getElementById('prevType').textContent = pendingEntry.type === 'expense' ? 'Expense' : 'Hours';
+        document.getElementById('prevPerson').textContent = pendingEntry.person;
+        document.getElementById('prevLLC').textContent = pendingEntry.llc;
+        document.getElementById('prevActivity').textContent = pendingEntry.description;
+        document.getElementById('prevDate').textContent = pendingEntry.date;
+        document.getElementById('rawText').textContent = '"' + pendingEntry.rawText + '"';
+
+        if (pendingEntry.type === 'expense') {
+            document.getElementById('prevAmountLabel').textContent = 'Amount';
+            document.getElementById('prevAmount').textContent = '$' + pendingEntry.amount.toFixed(2);
+        } else {
+            document.getElementById('prevAmountLabel').textContent = 'Time';
+            document.getElementById('prevAmount').textContent = formatTime(pendingEntry.hours);
+        }
+
+        document.getElementById('preview').classList.add('show');
+        document.getElementById('actionBtns').style.display = 'flex';
+        setStatus('Does this look right?');
+    }
+
+    function cancelEntry() {
+        pendingEntry = null;
+        document.getElementById('preview').classList.remove('show');
+        document.getElementById('actionBtns').style.display = 'none';
+        setStatus('Cancelled. Tap the mic to try again.');
+    }
+
+    // ---- SAVE ----
+    async function saveEntry() {
+        if (!pendingEntry) return;
+        const btn = document.getElementById('saveBtn');
+        btn.disabled = true;
+        btn.textContent = 'Saving...';
+
+        // Save to local history regardless
+        saveToLocalHistory(pendingEntry);
+
+        // Send to Google Sheets
+        if (scriptUrl) {
+            try {
+                await fetch(scriptUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(pendingEntry)
+                });
+                showToast('Saved!');
+            } catch (err) {
+                showToast('Saved locally. Sheet sync may have failed.', true);
+            }
+        } else {
+            showToast('Saved locally. Connect Google Sheets for cloud sync.');
+        }
+
+        // Reset
+        pendingEntry = null;
+        document.getElementById('preview').classList.remove('show');
+        document.getElementById('actionBtns').style.display = 'none';
+        btn.disabled = false;
+        btn.textContent = 'Save';
+        setStatus('Tap the mic and speak<br>"3 hours cleaning", "45 minutes laundry",<br>or "spent $35 at Walmart for supplies"');
+        loadHistory();
+    }
+
+    // ---- LOCAL HISTORY ----
+    function saveToLocalHistory(entry) {
+        const history = JSON.parse(localStorage.getItem('rental_history') || '[]');
+        history.unshift(entry);
+        if (history.length > 50) history.pop();
+        localStorage.setItem('rental_history', JSON.stringify(history));
+    }
+
+    function loadHistory() {
+        const history = JSON.parse(localStorage.getItem('rental_history') || '[]');
+        const container = document.getElementById('historyList');
+        if (history.length === 0) {
+            container.innerHTML = '<div style="color:#555;font-size:0.9rem;">No entries yet</div>';
+            return;
+        }
+        container.innerHTML = history.slice(0, 10).map(e => {
+            const isExpense = e.type === 'expense';
+            const amountText = isExpense ? ('$' + e.amount.toFixed(2)) : formatTime(e.hours);
+            const amountClass = isExpense ? 'expense-val' : 'hours-val';
+            const itemClass = isExpense ? 'expense' : 'hours';
+            const llcShort = e.llc ? (' &middot; ' + e.llc.replace('The ', '').replace(' Home', '')) : '';
+            return `
+            <div class="history-item ${itemClass}">
+                <div>
+                    <div class="history-activity">${e.description || e.activity}</div>
+                    <div class="history-meta">${e.person} &middot; ${e.date}${llcShort}</div>
+                </div>
+                <div class="history-amount ${amountClass}">${amountText}</div>
+            </div>`;
+        }).join('');
+    }
+
+    // ---- HELPERS ----
+    function formatTime(hours) {
+        const h = Math.floor(hours);
+        const m = Math.round((hours - h) * 60);
+        if (h > 0 && m > 0) return h + 'h ' + m + 'm';
+        if (h > 0) return h + 'h';
+        return m + 'm';
+    }
+
+    function setStatus(html) {
+        document.getElementById('status').innerHTML = html;
+    }
+
+    function showToast(msg, isError) {
+        const toast = document.getElementById('toast');
+        toast.textContent = msg;
+        toast.className = 'toast show' + (isError ? ' error' : '');
+        setTimeout(() => toast.className = 'toast', 2500);
+    }
+</script>
+
+</body>
+</html>
