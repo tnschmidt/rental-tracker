@@ -430,15 +430,7 @@
     }
 
     // ---- SPEECH RECOGNITION ----
-    function toggleListening() {
-        if (isListening) {
-            stopListening();
-            return;
-        }
-        if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-            setStatus('Speech recognition not supported. Use the text input below.');
-            return;
-        }
+    function startRecognition() {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         recognition = new SpeechRecognition();
         recognition.lang = 'en-US';
@@ -458,12 +450,47 @@
             stopListening();
             if (event.error === 'no-speech') {
                 setStatus("Didn't catch that. Try again.");
+            } else if (event.error === 'not-allowed') {
+                setStatus('Microphone access denied. Please allow microphone permission in your browser settings and try again.');
             } else {
                 setStatus('Error: ' + event.error);
             }
         };
         recognition.onend = () => { stopListening(); };
         recognition.start();
+    }
+
+    function toggleListening() {
+        if (isListening) {
+            stopListening();
+            return;
+        }
+        if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+            setStatus('Speech recognition not supported. Use the text input below.');
+            return;
+        }
+        // On Android Chrome, explicitly request microphone permission via
+        // getUserMedia before starting SpeechRecognition. Without this,
+        // the permission prompt may not appear and recognition silently fails.
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    // Permission granted — stop the stream immediately since
+                    // SpeechRecognition manages its own audio capture.
+                    stream.getTracks().forEach(track => track.stop());
+                    startRecognition();
+                })
+                .catch(err => {
+                    if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                        setStatus('Microphone access denied. Please allow microphone permission in your browser settings and try again.');
+                    } else {
+                        setStatus('Microphone error: ' + err.message);
+                    }
+                });
+        } else {
+            // Fallback for browsers without getUserMedia — try directly
+            startRecognition();
+        }
     }
 
     function stopListening() {
