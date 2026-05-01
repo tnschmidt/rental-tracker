@@ -348,7 +348,7 @@
     let sheetUrl = localStorage.getItem(SHEET_URL_KEY) || 'https://docs.google.com/spreadsheets/d/1ouoZt_0_-x90LYy5cxNykVSDGoYKl9hpdb-ask8VCYg/edit';
 
     // ---- STATE ----
-    let currentUser = 'Thomas';
+    let currentUser = localStorage.getItem('rental_tracker_person') || 'Thomas';
     let currentLLC = 'The Schmidt Home';
     let pendingEntry = null;
     let recognition = null;
@@ -361,6 +361,13 @@
         }
         updateSheetLink();
         loadHistory();
+        // Restore saved person selection
+        document.querySelectorAll('#userSelect .sel-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.textContent.trim() === currentUser) {
+                btn.classList.add('active');
+            }
+        });
     });
 
     function updateSheetLink() {
@@ -419,6 +426,7 @@
     // ---- USER / LLC SELECT ----
     function selectUser(name, btn) {
         currentUser = name;
+        localStorage.setItem('rental_tracker_person', name);
         document.querySelectorAll('#userSelect .sel-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
     }
