@@ -286,8 +286,8 @@
 
 <div class="selector-label">Property</div>
 <div class="selector" id="llcSelect">
-    <button class="sel-btn active-green" onclick="selectLLC('The Schmidt Home', this)">Schmidt Home</button>
-    <button class="sel-btn" onclick="selectLLC('JP Bishop Home', this)">JP Bishop Home</button>
+    <button class="sel-btn active-green" onclick="selectLLC('Amity House', this)">Amity House</button>
+    <button class="sel-btn" onclick="selectLLC('Concord Home', this)">Concord Home</button>
 </div>
 
 <button class="mic-btn" id="micBtn" onclick="toggleListening()">
@@ -348,8 +348,8 @@
     let sheetUrl = localStorage.getItem(SHEET_URL_KEY) || 'https://docs.google.com/spreadsheets/d/1ouoZt_0_-x90LYy5cxNykVSDGoYKl9hpdb-ask8VCYg/edit';
 
     // ---- STATE ----
-    let currentUser = 'Thomas';
-    let currentLLC = 'The Schmidt Home';
+    let currentUser = localStorage.getItem('rental_tracker_person') || 'Thomas';
+    let currentLLC = 'Amity House';
     let pendingEntry = null;
     let recognition = null;
     let isListening = false;
@@ -361,6 +361,13 @@
         }
         updateSheetLink();
         loadHistory();
+        // Restore saved person selection
+        document.querySelectorAll('#userSelect .sel-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.textContent.trim() === currentUser) {
+                btn.classList.add('active');
+            }
+        });
     });
 
     function updateSheetLink() {
@@ -419,6 +426,7 @@
     // ---- USER / LLC SELECT ----
     function selectUser(name, btn) {
         currentUser = name;
+        localStorage.setItem('rental_tracker_person', name);
         document.querySelectorAll('#userSelect .sel-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
     }
