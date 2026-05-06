@@ -121,7 +121,38 @@
         }
         .preview-row:last-child { border-bottom: none; }
         .preview-label { color: #888; }
-        .preview-value { color: #fff; font-weight: 500; }
+        .preview-value { color: #fff; font-weight: 500; cursor: pointer; border-bottom: 1px dashed #555; }
+        .preview-value:hover { color: #4fc3f7; }
+        .preview-edit {
+            background: #1a1a2e;
+            color: #fff;
+            border: 1px solid #4fc3f7;
+            border-radius: 6px;
+            padding: 4px 8px;
+            font-size: 0.95rem;
+            width: 60%;
+            text-align: right;
+        }
+        .person-toggles {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .person-toggle {
+            padding: 4px 12px;
+            border-radius: 8px;
+            border: 1px solid #555;
+            background: #1a1a2e;
+            color: #888;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+        .person-toggle.selected {
+            border-color: #4fc3f7;
+            background: #2a3a5e;
+            color: #4fc3f7;
+            font-weight: 600;
+        }
         .raw-text {
             color: #666;
             font-size: 0.85rem;
@@ -308,23 +339,23 @@
     </div>
     <div class="preview-row">
         <span class="preview-label">Person</span>
-        <span class="preview-value" id="prevPerson">-</span>
+        <span class="person-toggles" id="prevPersonToggles"></span>
     </div>
     <div class="preview-row">
         <span class="preview-label">Property</span>
-        <span class="preview-value" id="prevLLC">-</span>
+        <span class="preview-value" id="prevLLC" onclick="editPreviewField('llc', this)">-</span>
     </div>
     <div class="preview-row" id="prevAmountRow">
         <span class="preview-label" id="prevAmountLabel">-</span>
-        <span class="preview-value" id="prevAmount">-</span>
+        <span class="preview-value" id="prevAmount" onclick="editPreviewField('amount', this)">-</span>
     </div>
     <div class="preview-row">
         <span class="preview-label">Description</span>
-        <span class="preview-value" id="prevActivity">-</span>
+        <span class="preview-value" id="prevActivity" onclick="editPreviewField('description', this)">-</span>
     </div>
     <div class="preview-row">
         <span class="preview-label">Date</span>
-        <span class="preview-value" id="prevDate">-</span>
+        <span class="preview-value" id="prevDate" onclick="editPreviewField('date', this)">-</span>
     </div>
     <div class="raw-text" id="rawText"></div>
 </div>
@@ -702,10 +733,96 @@
     }
 
     // ---- PREVIEW ----
+    let selectedPersons = [];
+
+    function buildPersonToggles() {
+        const container = document.getElementById('prevPersonToggles');
+        const allPersons = [];
+        document.querySelectorAll('#userSelect .sel-btn').forEach(btn => {
+            allPersons.push(btn.textContent.trim());
+        });
+        container.innerHTML = allPersons.map(name => {
+            const sel = selectedPersons.includes(name) ? ' selected' : '';
+            return '<button class="person-toggle' + sel + '" onclick="togglePerson(\'' + name + '\', this)">' + name + '</button>';
+        }).join('');
+    }
+
+    function togglePerson(name, btn) {
+        const idx = selectedPersons.indexOf(name);
+        if (idx > -1) {
+            if (selectedPersons.length === 1) return;
+            selectedPersons.splice(idx, 1);
+            btn.classList.remove('selected');
+        } else {
+            selectedPersons.push(name);
+            btn.classList.add('selected');
+        }
+    }
+
+    function editPreviewField(field, el) {
+        const input = document.createElement('input');
+        input.className = 'preview-edit';
+        if (field === 'amount') {
+            input.value = pendingEntry.type === 'expense' ? pendingEntry.amount : pendingEntry.hours;
+            input.type = 'number';
+            input.step = 'any';
+        } else if (field === 'date') {
+            input.value = pendingEntry.date;
+        } else if (field === 'description') {
+            input.value = pendingEntry.description;
+        } else if (field === 'llc') {
+            input.value = pendingEntry.llc;
+        }
+        const originalEl = el;
+        originalEl.style.display = 'none';
+        originalEl.parentNode.appendChild(input);
+        input.focus();
+        input.select();
+
+        function commit() {
+            const val = input.value.trim();
+            if (field === 'amount') {
+                const num = parseFloat(val);
+                if (!isNaN(num) && num > 0) {
+                    if (pendingEntry.type === 'expense') {
+                        pendingEntry.amount = num;
+                        originalEl.textContent = '$' + num.toFixed(2);
+                    } else {
+                        pendingEntry.hours = num;
+                        originalEl.textContent = formatTime(num);
+                    }
+                }
+            } else if (field === 'date') {
+                if (val) {
+                    pendingEntry.date = val;
+                    originalEl.textContent = val;
+                }
+            } else if (field === 'description') {
+                if (val) {
+                    pendingEntry.description = val;
+                    originalEl.textContent = val;
+                }
+            } else if (field === 'llc') {
+                if (val) {
+                    pendingEntry.llc = val;
+                    originalEl.textContent = val;
+                }
+            }
+            input.remove();
+            originalEl.style.display = '';
+        }
+
+        input.addEventListener('blur', commit);
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { input.blur(); }
+        });
+    }
+
     function showPreview() {
         if (!pendingEntry) return;
         document.getElementById('prevType').textContent = pendingEntry.type === 'expense' ? 'Expense' : 'Hours';
-        document.getElementById('prevPerson').textContent = pendingEntry.person;
+        selectedPersons = [pendingEntry.person];
+        buildPersonToggles();
         document.getElementById('prevLLC').textContent = pendingEntry.llc;
         document.getElementById('prevActivity').textContent = pendingEntry.description;
         document.getElementById('prevDate').textContent = pendingEntry.date;
@@ -721,7 +838,7 @@
 
         document.getElementById('preview').classList.add('show');
         document.getElementById('actionBtns').style.display = 'flex';
-        setStatus('Does this look right?');
+        setStatus('Tap any value to edit. Select one or more people.');
     }
 
     function cancelEntry() {
@@ -738,28 +855,39 @@
         btn.disabled = true;
         btn.textContent = 'Saving...';
 
-        // Save to local history regardless
-        saveToLocalHistory(pendingEntry);
+        const people = selectedPersons.length > 0 ? selectedPersons : [pendingEntry.person];
+        let sheetFailed = false;
 
-        // Send to Google Sheets
-        if (scriptUrl) {
-            try {
-                await fetch(scriptUrl, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(pendingEntry)
-                });
-                showToast('Saved!');
-            } catch (err) {
-                showToast('Saved locally. Sheet sync may have failed.', true);
+        for (const person of people) {
+            const entry = Object.assign({}, pendingEntry, { person: person });
+            saveToLocalHistory(entry);
+
+            if (scriptUrl) {
+                try {
+                    await fetch(scriptUrl, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(entry)
+                    });
+                } catch (err) {
+                    sheetFailed = true;
+                }
             }
-        } else {
+        }
+
+        if (!scriptUrl) {
             showToast('Saved locally. Connect Google Sheets for cloud sync.');
+        } else if (sheetFailed) {
+            showToast('Saved locally. Sheet sync may have failed.', true);
+        } else {
+            const count = people.length;
+            showToast('Saved' + (count > 1 ? ' (' + count + ' entries)' : '') + '!');
         }
 
         // Reset
         pendingEntry = null;
+        selectedPersons = [];
         document.getElementById('preview').classList.remove('show');
         document.getElementById('actionBtns').style.display = 'none';
         btn.disabled = false;
