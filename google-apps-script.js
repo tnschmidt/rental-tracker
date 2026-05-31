@@ -68,7 +68,7 @@ function doPost(e) {
 
     if (data.type === 'expense') {
       var sheetName = 'Expenses ' + year;
-      var headers = ['Date', 'Person', 'Property', 'Amount', 'Description', 'Raw Text'];
+      var headers = ['Date', 'Person', 'Property', 'Amount', 'Description', 'Personal Card', 'Raw Text'];
       var sheet = getOrCreateSheet(spreadsheet, sheetName, headers);
       sheet.appendRow([
         data.date,
@@ -76,6 +76,7 @@ function doPost(e) {
         data.llc,
         data.amount,
         data.description,
+        data.personalCard ? 'Yes' : 'No',
         data.rawText
       ]);
     } else {
